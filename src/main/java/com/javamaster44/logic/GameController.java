@@ -23,7 +23,7 @@ public class GameController {
 
     // Powerup Costs
     public static final Map<String, Integer> COSTS = Map.of(
-            "Nuke", 100000,
+            "Nuke", 20000,
             "Confusion Ray", 1000,
             "Ship Finder", 3000,
             "Torpedo", 5000,
@@ -193,7 +193,7 @@ public class GameController {
         } else if (availableShots.isEmpty()) {
             return;
         } else {
-            targetStr = availableShots.remove(availableShots.size() - 1);
+            targetStr = availableShots.removeLast();
         }
 
         char r = targetStr.charAt(0);
@@ -214,6 +214,7 @@ public class GameController {
         updateUI();
         if (playerBoard.allShipsSunk()) {
             gameOver = true;
+            playerMoney -= 1200;
             showAlert("Game Over", "Computer Won! You lost money. Click 'New Game' to restart.");
             SaveManager.save(inventory, playerMoney);
         }
