@@ -9,6 +9,8 @@ import javafx.scene.Parent;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
+import javafx.scene.text.Font;
+
 import java.util.Map;
 
 public class GameUI {
@@ -31,6 +33,7 @@ public class GameUI {
         playerGrid = createGrid(false);
         cpuGrid = createGrid(true);
         statusLabel = new Label("Balance: $0");
+        statusLabel.setFont(Font.font(24));
         powerupMenu = new MenuButton("Powerups");
 
         initializeLayout();

@@ -39,13 +39,13 @@ public class GameController {
 
     // Powerup Costs
     public static final Map<String, Integer> COSTS = Map.of(
-            "Nuke", 100000,
+            "Nuke", 50000,
             "Confusion Ray", 1000,
             "Ship Finder", 3000,
             "Torpedo", 5000,
             "Frag Bomb", 2000,
             "Cross Fire", 5200,
-            "Bomb", 10000
+            "Bomb", 8000
     );
 
     public GameController(GameUI ui) {
@@ -191,8 +191,8 @@ public class GameController {
             showAlert("You sunk the " + ship.getName() + "!", "Reward: $" + ship.getReward());
             saveData();
         } else {
-            playerMoney -= ship.getReward();
-            showAlert("Your " + ship.getName() + " was sunk!", "Penalty: -$" + ship.getReward());
+            playerMoney -= ship.getReward()/3;
+            showAlert("Your " + ship.getName() + " was sunk!", "Penalty: -$" + (ship.getReward()/3));
             saveData();
             targetStack.clear();
         }
@@ -204,13 +204,16 @@ public class GameController {
 
         switch (item) {
             case "Nuke" -> {
-                for(char r='A'; r<='J'; r++)
-                    for(int c=0; c<10; c++)
-                        if(cpuBoard.getStatus(r, c) == 3) processShot(cpuBoard, r, c, true);
+                for(char r='A'; r<='J'; r++) {
+                    for(int c=0; c<10; c++) {
+                        processShot(cpuBoard, r, c, true); //shoot the whole board
+                    }
+                }
             }
             case "Confusion Ray" -> {
                 skipCpuTurn = true;
                 showAlert("Confusion Ray Used!", "CPU will skip this turn.");
+                processShot(cpuBoard, row, col, true);
             }
             case "Ship Finder" -> {
                 for(char r='A'; r<='J'; r++)
@@ -312,9 +315,9 @@ public class GameController {
         updateUI();
         if (cpuBoard.allShipsSunk()) {
             currentState = GameState.GAME_OVER;
-            playerMoney += 1200;
+            playerMoney += 2000;
             saveData();
-            showAlert("VICTORY!", "You defeated the Computer! Bonus: $1200. Click 'New Game' to restart.");
+            showAlert("VICTORY!", "You defeated the Computer! Bonus: $2000. Click 'New Game' to restart.");
             updateUI();
             return true;
         }
