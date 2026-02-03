@@ -38,6 +38,7 @@ public class GameUI {
         // Start in a neutral state, wait for user to click New Game
         setSetupMode(false);
         setupBox.setVisible(false); // Hide setup entirely initially
+        this.controller.promptNewGame();
     }
 
     public Parent getRoot() { return root; }
