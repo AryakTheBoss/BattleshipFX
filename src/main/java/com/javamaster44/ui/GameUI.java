@@ -20,6 +20,12 @@ public class GameUI {
     private GameController controller;
     private String selectedPowerup = null;
 
+    // Manual Setup Controls
+    private ComboBox<String> shipSelector;
+    private ComboBox<String> orientationSelector;
+    private Button confirmPlacementBtn;
+    private HBox setupBox;
+
     public GameUI() {
         root = new BorderPane();
         playerGrid = createGrid(false);
@@ -29,6 +35,9 @@ public class GameUI {
 
         initializeLayout();
         this.controller = new GameController(this);
+        // Start in a neutral state, wait for user to click New Game
+        setSetupMode(false);
+        setupBox.setVisible(false); // Hide setup entirely initially
     }
 
     public Parent getRoot() { return root; }
@@ -40,16 +49,34 @@ public class GameUI {
         topBar.setAlignment(Pos.CENTER_LEFT);
 
         Button newGameBtn = new Button("New Game");
-        newGameBtn.setOnAction(e -> controller.startNewGame());
+        newGameBtn.setOnAction(e -> controller.promptNewGame());
 
         Button shopBtn = new Button("Shop");
         shopBtn.setOnAction(e -> showShop());
 
-        // Add spacer to push money to the right or keep elements together
+        // Setup Controls
+        shipSelector = new ComboBox<>();
+        GameController.SHIP_DEFS.forEach(s -> shipSelector.getItems().add(s.name()));
+        shipSelector.getSelectionModel().selectFirst();
+
+        orientationSelector = new ComboBox<>();
+        orientationSelector.getItems().addAll("Horizontal", "Vertical");
+        orientationSelector.getSelectionModel().selectFirst();
+
+        confirmPlacementBtn = new Button("Start Game");
+        confirmPlacementBtn.setStyle("-fx-base: lightgreen;");
+        confirmPlacementBtn.setOnAction(e -> controller.finishSetup());
+
+        setupBox = new HBox(10, new Label("Place:"), shipSelector, orientationSelector, confirmPlacementBtn);
+        setupBox.setAlignment(Pos.CENTER_LEFT);
+        setupBox.setVisible(false);
+        setupBox.setManaged(false); // Don't take up space when hidden
+
+        // Add spacer
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
-        topBar.getChildren().addAll(newGameBtn, shopBtn, powerupMenu, spacer, statusLabel);
+        topBar.getChildren().addAll(newGameBtn, shopBtn, powerupMenu, setupBox, spacer, statusLabel);
         root.setTop(topBar);
 
         // Boards
@@ -57,13 +84,20 @@ public class GameUI {
         boards.setPadding(new Insets(20));
         boards.setAlignment(Pos.CENTER);
 
-        VBox pBox = new VBox(10, new Label("Player Board"), playerGrid);
+        VBox pBox = new VBox(10, new Label("Player Board (You)"), playerGrid);
         VBox cBox = new VBox(10, new Label("CPU Board"), cpuGrid);
         pBox.setAlignment(Pos.CENTER);
         cBox.setAlignment(Pos.CENTER);
 
         boards.getChildren().addAll(pBox, cBox);
         root.setCenter(boards);
+    }
+
+    public void setSetupMode(boolean isSetup) {
+        setupBox.setVisible(isSetup);
+        setupBox.setManaged(isSetup);
+        powerupMenu.setDisable(isSetup);
+        // During setup, Player Grid is active for placement, CPU Grid is inactive
     }
 
     private GridPane createGrid(boolean isCpu) {
@@ -77,7 +111,7 @@ public class GameUI {
             Label l = new Label(String.valueOf(i + 1));
             l.setPrefSize(30, 30);
             l.setAlignment(Pos.CENTER);
-            l.setStyle("-fx-text-fill: white;"); // Improve visibility on black bg
+            l.setStyle("-fx-text-fill: white;");
             grid.add(l, i + 1, 0);
 
             Label r = new Label(String.valueOf((char)('A' + i)));
@@ -98,8 +132,13 @@ public class GameUI {
                 if (isCpu) {
                     btn.setOnAction(e -> controller.handlePlayerShot(r, c, selectedPowerup));
                 } else {
-                    btn.setDisable(true);
-                    btn.setOpacity(1.0);
+                    btn.setOnAction(e -> {
+                        if (controller.getGameState() == GameController.GameState.SETUP) {
+                            String ship = shipSelector.getValue();
+                            boolean horiz = "Horizontal".equals(orientationSelector.getValue());
+                            controller.handlePlayerSetupClick(r, c, ship, horiz);
+                        }
+                    });
                 }
 
                 grid.add(btn, col + 1, (row - 'A') + 1);
@@ -115,6 +154,7 @@ public class GameUI {
         updateGrid(cpuGrid, cBoard, true);
 
         powerupMenu.getItems().clear();
+        powerupMenu.setDisable(false);
         for (String item : GameController.COSTS.keySet()) {
             int count = inventory.getOrDefault(item, 0);
             if (count > 0) {
@@ -126,7 +166,12 @@ public class GameUI {
                 powerupMenu.getItems().add(mi);
             }
         }
-        if (selectedPowerup == null) powerupMenu.setText("Powerups");
+        if (selectedPowerup == null) {
+            powerupMenu.setText("Powerups");
+        }
+        if (powerupMenu.getItems().isEmpty()) {
+            powerupMenu.setDisable(true);
+        }
     }
 
     private void updateGrid(GridPane grid, Board board, boolean hideShips) {
@@ -166,12 +211,33 @@ public class GameUI {
                 }
             }
             btn.setStyle("-fx-background-color: " + color + "; -fx-border-color: darkgray;");
+
+            // Re-enable/disable buttons based on state
+            if (grid == playerGrid) {
+                // Enabled if SETUP, Disabled if PLAYING
+                boolean isSetup = (controller.getGameState() == GameController.GameState.SETUP);
+                btn.setDisable(!isSetup);
+                btn.setOpacity(1.0);
+            } else {
+                // CPU Grid
+                boolean isPlaying = (controller.getGameState() == GameController.GameState.PLAYING);
+                btn.setDisable(!isPlaying);
+                btn.setOpacity(1.0);
+            }
         }
     }
 
     public void clearSelection() {
         selectedPowerup = null;
         powerupMenu.setText("Powerups");
+    }
+
+    public void showError(String title, String content) {
+        Alert err = new Alert(Alert.AlertType.ERROR);
+        err.setTitle(title);
+        err.setHeaderText(null);
+        err.setContentText(content);
+        err.showAndWait();
     }
 
     private void showShop() {

@@ -18,12 +18,6 @@ public class Board {
         initializeBoard();
     }
 
-    public void reset() {
-        grid.clear();
-        ships.clear();
-        initializeBoard();
-    }
-
     private void initializeBoard() {
         for (char row = 'A'; row <= 'J'; row++) {
             List<Integer> cols = new ArrayList<>();
@@ -34,6 +28,12 @@ public class Board {
         }
     }
 
+    public void reset() {
+        grid.clear();
+        ships.clear();
+        initializeBoard();
+    }
+
     public int getStatus(char row, int col) {
         return grid.get(row).get(col);
     }
@@ -42,31 +42,65 @@ public class Board {
         grid.get(row).set(col, status);
     }
 
-    public void placeShipsRandomly() {
-        createShip("Carrier", 5, 350);
-        createShip("Battleship", 4, 600);
-        createShip("Submarine", 3, 800);
-        createShip("Destroyer", 3, 800);
-        createShip("Patrol Boat", 2, 1100);
+    /**
+     * Removes a ship by name from the board and clears its grid cells.
+     */
+    public void removeShip(String name) {
+        Ship target = null;
+        for (Ship s : ships) {
+            if (s.getName().equals(name)) {
+                target = s;
+                break;
+            }
+        }
+
+        if (target != null) {
+            for (String coord : target.getCoordinates()) {
+                char r = coord.charAt(0);
+                int c = Integer.parseInt(coord.substring(1));
+                setStatus(r, c, 0); // Reset to empty
+            }
+            ships.remove(target);
+        }
     }
 
-    private void createShip(String name, int length, int reward) {
+    /**
+     * Tries to place a ship. Returns true if successful.
+     */
+    public boolean placeShip(String name, int length, int reward, char row, int col, boolean horizontal) {
+        if (!isValidPlacement(row, col, length, horizontal)) {
+            return false;
+        }
+
+        Ship ship = new Ship(name, length, reward);
+        for (int i = 0; i < length; i++) {
+            char r = horizontal ? row : (char) (row + i);
+            int c = horizontal ? col + i : col;
+            setStatus(r, c, 3); // 3 = Ship
+            ship.addCoordinate(r, c);
+        }
+        ships.add(ship);
+        return true;
+    }
+
+    public void placeShipsRandomly() {
+        // Definitions matches GameController definitions
+        createRandomShip("Carrier", 5, 350);
+        createRandomShip("Battleship", 4, 600);
+        createRandomShip("Submarine", 3, 800);
+        createRandomShip("Destroyer", 3, 800);
+        createRandomShip("Patrol Boat", 2, 1100);
+    }
+
+    private void createRandomShip(String name, int length, int reward) {
         boolean placed = false;
         while (!placed) {
-            Ship ship = new Ship(name, length, reward);
             int rowIdx = random.nextInt(10);
             int colIdx = random.nextInt(10);
             boolean horizontal = random.nextBoolean();
             char rowChar = (char) ('A' + rowIdx);
 
-            if (isValidPlacement(rowChar, colIdx, length, horizontal)) {
-                for (int i = 0; i < length; i++) {
-                    char r = horizontal ? rowChar : (char) (rowChar + i);
-                    int c = horizontal ? colIdx + i : colIdx;
-                    setStatus(r, c, 3); // 3 = Ship
-                    ship.addCoordinate(r, c);
-                }
-                ships.add(ship);
+            if (placeShip(name, length, reward, rowChar, colIdx, horizontal)) {
                 placed = true;
             }
         }
